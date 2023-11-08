@@ -1,0 +1,148 @@
+version: "3.4"
+
+services:
+  app-a:
+    # build: ../app/fastapi/
+    image: ghcr.io/blueswen/observability-workshop-101/fastapi:latest
+    container_name: app-a
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=app-a
+      - TARGET_ONE_SVC=app-b:8000
+      - TARGET_TWO_SVC=app-c:8080
+      - OTLP_GRPC_ENDPOINT=http://tempo:4317
+    labels:
+      - logging=promtail
+      - language=python
+    command: "python main.py"
+
+  app-b:
+    # build: ../app/fastapi/
+    image: ghcr.io/blueswen/observability-workshop-101/fastapi:latest
+    container_name: app-b
+    ports:
+      - "8001:8000"
+    environment:
+      - APP_NAME=app-b
+      - TARGET_ONE_SVC=app-c:8080
+      - TARGET_TWO_SVC=app-a:8000
+      - OTLP_GRPC_ENDPOINT=http://tempo:4317
+    labels:
+      - logging=promtail
+      - language=python
+    command: "python main.py"
+
+  app-c:
+    # build: ../app/springboot/
+    image: ghcr.io/blueswen/observability-workshop-101/springboot:latest
+    container_name: app-c
+    ports:
+      - "8080:8080"
+    environment:
+      - MANAGEMENT_METRICS_TAGS_APPLICATION=app-c
+      - TARGET_ONE_SVC=app-a:8000
+      - TARGET_TWO_SVC=app-b:8000
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_SERVICE_NAME=app-c
+    labels:
+      - logging=promtail
+      - language=java
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./etc/application.yaml:/application.yaml
+    command: "java -javaagent:/opentelemetry-javaagent.jar -jar /app.jar --spring.config.location=file:/application.yaml"
+
+  postgres:
+    image: postgres:16.0
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    labels:
+      - logging=promtail
+
+  redis:
+    image: redis:7.2.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    labels:
+      - logging=promtail
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    ports:
+      - 8081:8080
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - logging=promtail
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./etc/prometheus.yml:/workspace/prometheus.yml
+    labels:
+      - logging=promtail
+    command:
+      - --config.file=/workspace/prometheus.yml
+
+  promtail:
+    image:  grafana/promtail:2.9.2
+    container_name: promtail
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./etc/promtail.yaml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - logging=promtail
+    command: -config.file=/etc/promtail/docker-config.yaml
+    
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    labels:
+      - logging=promtail
+    command: -config.file=/etc/loki/local-config.yaml
+
+  tempo:
+    image: grafana/tempo:2.3.0
+    container_name: tempo
+    labels:
+      - logging=promtail
+    command: 
+      - "--target=all"
+      - "--storage.trace.backend=local"
+      - "--storage.trace.local.path=/var/tempo"
+      - "--auth.enabled=false"
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./etc/grafana/:/etc/grafana/provisioning/datasources
+      - ./etc/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./etc/grafana/dashboards:/etc/grafana/dashboards
+    labels:
+      - logging=promtail
