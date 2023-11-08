@@ -117,7 +117,7 @@ async def random_fail(response: Response):
         await client.get(
             f"http://{TARGET_TWO_SVC}/cpu_task",
         )
-    if random.randint(0, 1) <= 0.2:
+    if random.randint(0, 10) <= 2:
         async with httpx.AsyncClient() as client:
             await client.get(
                 "http://localhost:8000/error_test",
