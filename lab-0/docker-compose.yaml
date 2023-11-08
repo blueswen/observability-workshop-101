@@ -1,0 +1,70 @@
+version: "3.4"
+
+services:
+  app-a:
+    # build: ../app/fastapi/
+    image: ghcr.io/blueswen/observability-workshop-101/fastapi:latest
+    container_name: app-a
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=app-a
+      - TARGET_ONE_SVC=app-b:8000
+      - TARGET_TWO_SVC=app-c:8080
+    command: "python main.py"
+
+  app-b:
+    # build: ../app/fastapi/
+    image: ghcr.io/blueswen/observability-workshop-101/fastapi:latest
+    container_name: app-b
+    ports:
+      - "8001:8000"
+    environment:
+      - APP_NAME=app-b
+      - TARGET_ONE_SVC=app-c:8080
+      - TARGET_TWO_SVC=app-a:8000
+    command: "python main.py"
+
+  app-c:
+    # build: ../app/springboot/
+    image: ghcr.io/blueswen/observability-workshop-101/springboot:latest
+    container_name: app-c
+    ports:
+      - "8080:8080"
+    environment:
+      - MANAGEMENT_METRICS_TAGS_APPLICATION=app-c
+      - TARGET_ONE_SVC=app-a:8000
+      - TARGET_TWO_SVC=app-b:8000
+    command: "java -jar /app.jar"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    ports:
+      - 8081:8080
+    privileged: true
+    volumes: # 掛載 Docker 相關資料，讓 cAdvisor 可以監控
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./etc/prometheus.yml:/workspace/prometheus.yml # 掛載 prometheus.yml 設定檔
+    command:
+      - --config.file=/workspace/prometheus.yml # 指定 prometheus.yml 設定檔位置
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes: # 透過 Provisioning 設定檔，讓 Grafana 可以自動匯入 datasource 與 dashboard
+      - ./etc/grafana/:/etc/grafana/provisioning/datasources # 掛載 datasources 設定檔目錄，讀取 datasources.yaml
+      - ./etc/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml # 掛載 dashboards 設定檔 dashboards.yaml
+      - ./etc/grafana/dashboards:/etc/grafana/dashboards # 掛載 dashboards 目錄

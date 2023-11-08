@@ -1,0 +1,70 @@
+version: "3.4"
+
+services:
+  app-a:
+    # build: ../app/fastapi/
+    image: ghcr.io/blueswen/observability-workshop-101/fastapi:latest
+    container_name: app-a
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=app-a
+      - TARGET_ONE_SVC=app-b:8000
+      - TARGET_TWO_SVC=app-c:8080
+    command: "python main.py"
+
+  app-b:
+    # build: ../app/fastapi/
+    image: ghcr.io/blueswen/observability-workshop-101/fastapi:latest
+    container_name: app-b
+    ports:
+      - "8001:8000"
+    environment:
+      - APP_NAME=app-b
+      - TARGET_ONE_SVC=app-c:8080
+      - TARGET_TWO_SVC=app-a:8000
+    command: "python main.py"
+
+  app-c:
+    # build: ../app/springboot/
+    image: ghcr.io/blueswen/observability-workshop-101/springboot:latest
+    container_name: app-c
+    ports:
+      - "8080:8080"
+    environment:
+      - MANAGEMENT_METRICS_TAGS_APPLICATION=app-c
+      - TARGET_ONE_SVC=app-a:8000
+      - TARGET_TWO_SVC=app-b:8000
+    command: "java -jar /app.jar"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    ports:
+      - 8081:8080
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./etc/prometheus-ans.yml:/workspace/prometheus.yml
+    command:
+      - --config.file=/workspace/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./etc/grafana/:/etc/grafana/provisioning/datasources
+      - ./etc/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./etc/grafana/dashboards:/etc/grafana/dashboards
