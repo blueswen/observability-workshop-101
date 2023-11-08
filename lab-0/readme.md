@@ -18,7 +18,7 @@
       1. Swagger UI: [http://localhost:8001/docs](http://localhost:8001/docs)
       2. Metrics: [http://localhost:8001/metrics](http://localhost:8001/metrics)
    3. App C: [http://localhost:8080](http://localhost:8082)
-      1. Swagger UI: [http://localhost:8080/docs](http://localhost:8080/docs)
+      1. Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
       2. Metrics: [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
    4. cAdvisor: [http://localhost:8081](http://localhost:8081)
    5. Prometheus: [http://localhost:9090](http://localhost:9090)
