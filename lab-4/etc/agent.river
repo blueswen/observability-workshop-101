@@ -1,0 +1,22 @@
+// Prometheus
+
+prometheus.scrape "default" {
+  targets = [{"__address__" = "localhost:12345"}]
+  forward_to = [prometheus.remote_write.prom.receiver]
+}
+
+prometheus.scrape "app" {
+  targets = [
+    {"__address__" = "app-a:8000"},
+    {"__address__" = "app-b:8000"},
+    {"__address__" = "app-c:8080", "__metrics_path__"="/actuator/prometheus"},
+    {"__address__" = "cadvisor:8080"},
+  ]
+  forward_to = [prometheus.remote_write.prom.receiver]
+}
+
+prometheus.remote_write "prom" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}

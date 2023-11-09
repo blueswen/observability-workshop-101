@@ -1,0 +1,39 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push # Loki 的 API Endpoint
+
+scrape_configs:
+  - job_name: python_container_scrape
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters: # 只收集有 logging=promtail Label 的 Container
+          - name: label
+            values: ["logging=promtail"]
+    relabel_configs:
+      - source_labels: [__meta_docker_container_label_language] # 用 Container Label language 作為 Loki 的 Label
+        target_label: language
+      - source_labels: ['__meta_docker_container_name'] # 用 Container Name 作為 Loki 的 Label
+        regex: '/(.*)' # 只取 Container Name 的最後一段
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream'] # 用 Container Log Stream(stdout, stderr) 作為 Loki 的 Label
+        target_label: 'logstream'
+    pipeline_stages:
+      - match:
+          selector: '{language="python"}' # 根據 Loki Label language=python 來做 multiline
+          stages:
+            - multiline:
+                firstline: '^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2},\d{3}' # 用正規表示式來判斷第一行
+                max_wait_time: 3s # 等待 3 秒
+      - match:
+          selector: '{language="java"}' # 根據 Loki Label language=java 來做 multiline
+          stages:
+            - multiline:
+                firstline: '^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2}\.\d{3}' # 用正規表示式來判斷第一行
+                max_wait_time: 3s # 等待 3 秒
