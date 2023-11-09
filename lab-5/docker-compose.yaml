@@ -1,0 +1,88 @@
+version: "3.4"
+
+services:
+  app-a:
+    # build: ../app/fastapi/
+    image: ghcr.io/blueswen/observability-workshop-101/fastapi:latest
+    container_name: app-a
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=app-a
+      - TARGET_ONE_SVC=app-b:8000
+      - TARGET_TWO_SVC=app-c:8080
+      - OTLP_GRPC_ENDPOINT=http://otel-collector:4317
+    command: "python main.py"
+
+  app-b:
+    # build: ../app/fastapi/
+    image: ghcr.io/blueswen/observability-workshop-101/fastapi:latest
+    container_name: app-b
+    ports:
+      - "8001:8000"
+    environment:
+      - APP_NAME=app-b
+      - TARGET_ONE_SVC=app-c:8080
+      - TARGET_TWO_SVC=app-a:8000
+      - OTLP_GRPC_ENDPOINT=http://otel-collector:4317
+    command: "python main.py"
+
+  app-c:
+    # build: ../app/springboot/
+    image: ghcr.io/blueswen/observability-workshop-101/springboot:latest
+    container_name: app-c
+    ports:
+      - "8080:8080"
+    environment:
+      - MANAGEMENT_METRICS_TAGS_APPLICATION=app-c
+      - TARGET_ONE_SVC=app-a:8000
+      - TARGET_TWO_SVC=app-b:8000
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_SERVICE_NAME=app-c
+    command: "java -javaagent:/opentelemetry-javaagent.jar -jar /app.jar"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.88.0
+    container_name: otel-collector
+    command:
+      - "--config=/conf/config.yaml"
+    volumes:
+      - ./etc/otel-collector.yaml:/conf/config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP http receiver
+      - "8888:8888"
+      - "8889:8889"
+    restart: on-failure
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:2.3.0
+    container_name: tempo
+    command: 
+      - "--target=all"
+      - "--storage.trace.backend=local"
+      - "--storage.trace.local.path=/var/tempo"
+      - "--auth.enabled=false"
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./etc/prometheus.yml:/workspace/prometheus.yml # 掛載 prometheus.yml 設定檔
+    command:
+      - --config.file=/workspace/prometheus.yml # 指定 prometheus.yml 設定檔位置
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes: # 透過 Provisioning 設定檔，讓 Grafana 可以自動匯入 datasource 與 dashboard
+      - ./etc/grafana/:/etc/grafana/provisioning/datasources # 掛載 datasources 設定檔目錄，讀取 datasources.yaml
+      - ./etc/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml # 掛載 dashboards 設定檔 dashboards.yaml
+      - ./etc/grafana/dashboards:/etc/grafana/dashboards # 掛載 dashboards 目錄

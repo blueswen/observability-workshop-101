@@ -1,0 +1,73 @@
+# config file version
+apiVersion: 1
+
+# list of datasources that should be deleted from the database
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+# list of datasources to insert/update depending
+# what's available in the database
+datasources:
+  # <string, required> name of the datasource. Required
+  - uid: prometheus
+    orgId: 1
+    name: Prometheus
+    type: prometheus
+    typeName: Prometheus
+    access: proxy
+    url: http://prometheus:9090
+    password: ''
+    user: ''
+    database: ''
+    basicAuth: false
+    isDefault: true
+    readOnly: false
+    editable: true
+    jsonData:
+      exemplarTraceIdDestinations:
+        - datasourceUid: tempo
+          name: trace_id
+      httpMethod: POST
+  - uid: loki
+    orgId: 1
+    name: Loki
+    type: loki
+    typeName: Loki
+    access: proxy
+    url: http://loki:3100
+    readOnly: false
+    editable: true
+    jsonData:
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: (?:trace_id)=(\w+)
+          name: TraceID
+          url: $${__value.raw}
+  - uid: tempo
+    orgId: 1
+    name: Tempo
+    type: tempo
+    typeName: Tempo
+    access: proxy
+    url: http://tempo
+    readOnly: false
+    editable: true
+    jsonData:
+      httpMethod: GET
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: loki
+      tracesToLogsV2:
+        customQuery: false
+        datasourceUid: loki
+        filterBySpanID: false
+        filterByTraceID: true
+        spanEndTimeShift: 3m
+        spanStartTimeShift: '-3m'
+        tags:
+          - key: "service.name"
+            value: "container"
