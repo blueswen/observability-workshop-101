@@ -20,8 +20,8 @@
    3. App C: [http://localhost:8080](http://localhost:8082)
       1. Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
       2. Metrics: [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
-   5. Prometheus: [http://localhost:9090](http://localhost:9090)
-   6. Grafana: [http://localhost:3000](http://localhost:3000)，登入帳號密碼為 `admin/admin`
+   4. Prometheus: [http://localhost:9090](http://localhost:9090)
+   5. Grafana: [http://localhost:3000](http://localhost:3000)，登入帳號密碼為 `admin/admin`
       1. 點擊左上 Menu > Dashboards > OpenTelemetry APM，即可查看透過 Provisioning 建立的 Dashboard
          1. 透過 [k6](https://k6.io/) 執行測試腳本 `k6 run --vus 3 --duration 300s k6-script.js`，產生 Trace 資料
 3. 關閉所有服務

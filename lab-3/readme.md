@@ -52,7 +52,7 @@
 
 ## Tasks
 
-<details><summary>Task 1: 使用 PromQL 語法於 Grafana 查詢 app-a 的 Container 記憶體使用量，證明 Mimir 有取得 Prometheus 寫入的 Metrics</summary>
+<details><summary>Task 1: 使用 PromQL 語法於 Grafana 查詢 app-a 的 Container 記憶體使用量，驗證 Mimir 有取得 Prometheus 寫入的 Metrics</summary>
 
 1. 開啟 Grafana UI，點擊左上選單後進入 `Explore` 頁籤，左上下拉選單選擇 `Prometheus` 後輸入以下查詢語法
 
