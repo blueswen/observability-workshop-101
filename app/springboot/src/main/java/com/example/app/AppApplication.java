@@ -1,5 +1,6 @@
 package com.example.app;
 
+import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +95,7 @@ public class AppApplication {
     }
 
     @GetMapping("/random_fail")
-    public String random_fail() throws InterruptedException, IOException {
+    public String random_fail() throws Exception {
         String TARGET_ONE_SVC = System.getenv().getOrDefault("TARGET_ONE_SVC", "localhost:8080");
         String TARGET_TWO_SVC = System.getenv().getOrDefault("TARGET_TWO_SVC", "localhost:8080");
         Request.Get("http://localhost:8080/")
@@ -104,10 +105,12 @@ public class AppApplication {
         Request.Get(String.format("http://%s/cpu_task", TARGET_TWO_SVC))
                 .execute().returnContent();
         if (Math.random() <= 0.2) {
-            Request.Get("http://localhost:8080/error_test")
-                    .execute().returnContent();
+            HttpResponse response = Request.Get("http://localhost:8080/error_test").execute().returnResponse();
+            if (response.getStatusLine().getStatusCode() != 200) {
+                throw new Exception("HTTP request failed with status code " + response.getStatusLine().getStatusCode());
+            }
         }
-        return "random_fail";
+        return "random_fail success";
     }
 
     @GetMapping("/peanuts/{id}")

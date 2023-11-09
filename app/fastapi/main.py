@@ -119,10 +119,12 @@ async def random_fail(response: Response):
         )
     if random.randint(0, 10) <= 2:
         async with httpx.AsyncClient() as client:
-            await client.get(
+            r = await client.get(
                 "http://localhost:8000/error_test",
             )
-    return {"path": "/random_fail"}
+            if r.status_code != 200:
+                raise ValueError("Got error")
+    return {"path": "/random_fail", "status": "success"}
 
 
 if __name__ == "__main__":
